@@ -5,7 +5,9 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
+#include <strings.h>
 #include <sys/epoll.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 int init_listen_fd(unsigned short port) {
@@ -114,6 +116,36 @@ int recv_http_request(int cfd, int epfd) {
         close(cfd);
     } else {
         perror("recv");
+    }
+
+    return 0;
+}
+
+int parse_request_line(const char* line, int cfd) {
+    char method[12];
+    char path[1024];
+    sscanf(line, "%[^ ], %[^ ]", method, path);
+    if (strcasecmp(method, "get") != 0) {
+        return -1;
+    }
+
+    char* file = NULL;
+    if (strcmp(path, "/") == 0) {
+        file = "./";
+    } else {
+        file = path + 1;
+    }
+
+    struct stat st;
+    int ret = stat(file, &stat);
+    if (ret == -1) {
+        return -1;
+    }
+
+    if (S_ISDIR(st.st_mode)) {
+
+    } else {
+        
     }
 
     return 0;
