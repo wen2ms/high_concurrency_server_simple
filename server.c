@@ -1,9 +1,12 @@
 #include "server.h"
 
 #include <arpa/inet.h>
-#include <stdio.h>
+#include <errno.h>
 #include <fcntl.h>
+#include <stdio.h>
+#include <string.h>
 #include <sys/epoll.h>
+#include <unistd.h>
 
 int init_listen_fd(unsigned short port) {
     int lfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -63,7 +66,7 @@ int epoll_run(int lfd) {
             if (fd == lfd) {
                 accept_client(lfd, epfd);
             } else {
-                
+                recv_http_request(fd, epfd);
             }
         }
     }
@@ -89,6 +92,28 @@ int accept_client(int lfd, int epfd) {
     if (ret == -1) {
         perror("epoll_ctl");
         return -1;
+    }
+
+    return 0;
+}
+
+int recv_http_request(int cfd, int epfd) {
+    int len = 0, total = 0;
+    char tmp[1024] = {0};
+    char buf[4096] = {0};
+    while ((len = recv(cfd, tmp, sizeof(tmp), 0) > 0)) {
+        if (total + len < sizeof(buf)) {
+            memcpy(buf + total, tmp, len);
+        }
+        total += len;
+    }
+
+    if (len == -1 && errno == EAGAIN) {
+    } else if (len == 0) {
+        epoll_ctl(epfd, EPOLL_CTL_DEL, cfd, NULL);
+        close(cfd);
+    } else {
+        perror("recv");
     }
 
     return 0;
