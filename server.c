@@ -1,6 +1,7 @@
 #include "server.h"
 
 #include <arpa/inet.h>
+#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -9,6 +10,7 @@
 #include <sys/epoll.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <sys/sendfile.h>
 
 int init_listen_fd(unsigned short port) {
     int lfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -143,10 +145,31 @@ int parse_request_line(const char* line, int cfd) {
     }
 
     if (S_ISDIR(st.st_mode)) {
-
     } else {
-        
     }
+
+    return 0;
+}
+
+int send_file(const char* file_name, int cfd) {
+    int fd = open(file_name, O_RDONLY);
+    assert(fd > 0);
+    // while (1) {
+    //     char buff[1024];
+    //     int len = read(fd, buff, sizeof(buff));
+    //     if (len > 0) {
+    //         send(cfd, buff, len, 0);
+
+    //         usleep(10);
+    //     } else if (len == 0) {
+    //         break;
+    //     } else {
+    //         perror("read");
+    //     }
+    // }
+
+    int size = lseek(fd, 0, SEEK_END);
+    sendfile(cfd, fd, NULL, size);
 
     return 0;
 }
