@@ -173,3 +173,13 @@ int send_file(const char* file_name, int cfd) {
 
     return 0;
 }
+
+int send_head_msg(int cfd, int status, const char* desc, const char* type, int length) {
+    char buff[4096] = {0};
+    sprintf(buff, "http/1.1 %d %s\r\n", status, desc);
+    sprintf(buff + strlen(buff), "content-type: %s\r\n", type);
+    sprintf(buff + strlen(buff), "content-length: %d\r\n\r\n", length);
+
+    send(cfd, buff, strlen(buff), 0);
+    return 0;
+}

@@ -11,3 +11,5 @@ int recv_http_request(int cfd, int epfd);
 int parse_request_line(const char* line, int cfd);
 
 int send_file(const char* file_name, int cfd);
+
+int send_head_msg(int cfd, int status, const char* desc, const char* type, int length);
