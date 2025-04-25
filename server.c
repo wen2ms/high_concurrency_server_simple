@@ -141,11 +141,15 @@ int parse_request_line(const char* line, int cfd) {
     struct stat st;
     int ret = stat(file, &stat);
     if (ret == -1) {
+        send_head_msg(cfd, 404, "Not Found", get_content_type(".html"), -1);
+        send_file("404.html", cfd);
         return -1;
     }
 
     if (S_ISDIR(st.st_mode)) {
     } else {
+        send_head_msg(cfd, 200, "OK", get_content_type(file), st.st_size);
+        send_file(file, cfd);
     }
 
     return 0;
@@ -182,4 +186,43 @@ int send_head_msg(int cfd, int status, const char* desc, const char* type, int l
 
     send(cfd, buff, strlen(buff), 0);
     return 0;
+}
+
+const char* get_content_type(const char* file_name) {
+    const char* dot = strrchr(file_name, '.');
+    if (dot == NULL) {
+        return "text/plain; charset=utf-8";
+    } else if (strcasecmp(dot, ".html") == 0 || strcasecmp(dot, ".htm") == 0) {
+        return "text/html; charset=utf-8";
+    } else if (strcasecmp(dot, ".jpg") == 0 || strcasecmp(dot, ".jpeg") == 0) {
+        return "image/jpeg";
+    } else if (strcasecmp(dot, ".gif") == 0) {
+        return "image/gif";
+    } else if (strcasecmp(dot, ".png") == 0) {
+        return "image/png";
+    } else if (strcasecmp(dot, ".css") == 0) {
+        return "text/css";
+    } else if (strcasecmp(dot, ".au") == 0) {
+        return "audio/basic";
+    } else if (strcasecmp(dot, ".wav") == 0) {
+        return "audio/wav";
+    } else if (strcasecmp(dot, ".avi") == 0) {
+        return "video/x-msvideo";
+    } else if (strcasecmp(dot, ".midi") == 0 || strcasecmp(dot, ".mid") == 0) {
+        return "audio/midi";
+    } else if (strcasecmp(dot, ".mp3") == 0) {
+        return "audio/mpeg";
+    } else if (strcasecmp(dot, ".mov") == 0 || strcasecmp(dot, ".qt") == 0) {
+        return "video/quicktime";
+    } else if (strcasecmp(dot, ".mpeg") == 0 || strcasecmp(dot, ".mpe") == 0) {
+        return "video/mpeg";
+    } else if (strcasecmp(dot, ".vrml") == 0 || strcasecmp(dot, ".vrl") == 0) {
+        return "model/vrml";
+    } else if (strcasecmp(dot, ".ogg") == 0) {
+        return "application/ogg";
+    } else if (strcasecmp(dot, ".pac") == 0) {
+        return "application/x-ns-proxy-autoconfig";
+    } else {
+        return "text/plain; charset=utf-8";
+    }
 }
