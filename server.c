@@ -104,10 +104,11 @@ int accept_client(int lfd, int epfd) {
 }
 
 int recv_http_request(int cfd, int epfd) {
+    printf("Recv http request...\n");
     int len = 0, total = 0;
     char tmp[1024] = {0};
     char buf[4096] = {0};
-    while ((len = recv(cfd, tmp, sizeof(tmp), 0) > 0)) {
+    while ((len = recv(cfd, tmp, sizeof(tmp), 0)) > 0) {
         if (total + len < sizeof(buf)) {
             memcpy(buf + total, tmp, len);
         }
@@ -132,7 +133,8 @@ int recv_http_request(int cfd, int epfd) {
 int parse_request_line(const char* line, int cfd) {
     char method[12];
     char path[1024];
-    sscanf(line, "%[^ ], %[^ ]", method, path);
+    sscanf(line, "%[^ ] %[^ ]", method, path);
+    printf("method: %s, path: %s\n", method, path);
     if (strcasecmp(method, "get") != 0) {
         return -1;
     }
@@ -181,8 +183,16 @@ int send_file(const char* file_name, int cfd) {
     // }
 
     int size = lseek(fd, 0, SEEK_END);
-    sendfile(cfd, fd, NULL, size);
-
+    lseek(fd, 0, SEEK_SET);
+    off_t offset = 0;
+    while (offset < size) {
+        int ret = sendfile(cfd, fd, &offset, size);
+        printf("ret value: %d\n", ret);
+        if (ret == -1) {
+            perror("sendfile");
+        }
+    }
+    close(fd);
     return 0;
 }
 
