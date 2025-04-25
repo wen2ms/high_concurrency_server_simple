@@ -15,6 +15,7 @@ int main(int argc, char* argv[]) {
     chdir(argv[2]);
 
     int lfd = init_listen_fd(port);
+    epoll_run(lfd);
 
     return 0;
 }

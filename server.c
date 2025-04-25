@@ -115,6 +115,10 @@ int recv_http_request(int cfd, int epfd) {
     }
 
     if (len == -1 && errno == EAGAIN) {
+        char* req_end = strstr(buf, "\r\n");
+        int req_len = req_end - buf;
+        buf[req_len] = '\0';
+        parse_request_line(buf, cfd);
     } else if (len == 0) {
         epoll_ctl(epfd, EPOLL_CTL_DEL, cfd, NULL);
         close(cfd);
@@ -141,7 +145,7 @@ int parse_request_line(const char* line, int cfd) {
     }
 
     struct stat st;
-    int ret = stat(file, &stat);
+    int ret = stat(file, &st);
     if (ret == -1) {
         send_head_msg(cfd, 404, "Not Found", get_content_type(".html"), -1);
         send_file("404.html", cfd);
