@@ -2,15 +2,17 @@
 
 #include <arpa/inet.h>
 #include <assert.h>
+#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <strings.h>
 #include <sys/epoll.h>
+#include <sys/sendfile.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <sys/sendfile.h>
 
 int init_listen_fd(unsigned short port) {
     int lfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -147,6 +149,8 @@ int parse_request_line(const char* line, int cfd) {
     }
 
     if (S_ISDIR(st.st_mode)) {
+        send_head_msg(cfd, 200, "OK", get_content_type(".html"), -1);
+        send_dir(file, cfd);
     } else {
         send_head_msg(cfd, 200, "OK", get_content_type(file), st.st_size);
         send_file(file, cfd);
@@ -225,4 +229,34 @@ const char* get_content_type(const char* file_name) {
     } else {
         return "text/plain; charset=utf-8";
     }
+}
+
+int send_dir(const char* dir_name, int cfd) {
+    char buff[4096] = {0};
+    sprintf(buff, "<html><head><title>%s</title></head><body><table>", dir_name);
+
+    struct dirent** namelist;
+    int num = scandir(dir_name, &namelist, NULL, alphasort);
+    for (int i = 0; i < num; ++i) {
+        char* name = namelist[i]->d_name;
+        struct stat st;
+        char sub_path[1024] = {0};
+        sprintf(sub_path, "%s/%s", dir_name, name);
+        stat(sub_path, &st);
+        if (S_ISDIR(st.st_mode)) {
+            sprintf(buff + strlen(buff), "<tr><td><a href=\"%s/\">%s</a></td><td>%ld</td></tr>", name, name, st.st_size);
+        } else {
+            sprintf(buff + strlen(buff), "<tr><td><a href=\"%s\">%s</a></td><td>%ld</td></tr>", name, name, st.st_size);
+        }
+        
+        send(cfd, buff, strlen(buff), 0);
+        memset(buff, 0, strlen(buff));
+        free(namelist[i]);
+    }
+
+    sprintf(buff, "</table></body></html>");
+    send(cfd, buff, strlen(buff), 0);
+    free(namelist);
+
+    return 0;
 }
