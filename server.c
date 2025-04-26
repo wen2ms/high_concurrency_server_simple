@@ -2,6 +2,7 @@
 
 #include <arpa/inet.h>
 #include <assert.h>
+#include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -139,6 +140,8 @@ int parse_request_line(const char* line, int cfd) {
         return -1;
     }
 
+    decode_msg(path, path);
+
     char* file = NULL;
     if (strcmp(path, "/") == 0) {
         file = "./";
@@ -273,6 +276,32 @@ int send_dir(const char* dir_name, int cfd) {
     sprintf(buff, "</table></body></html>");
     send(cfd, buff, strlen(buff), 0);
     free(namelist);
+
+    return 0;
+}
+
+void decode_msg(char* to, char* from) {
+    for (; *from != '\0'; ++from, ++to) {
+        if (from[0] == '%' && isxdigit(from[1]) && isxdigit(from[2])) {
+            *to = hex_to_dec(from[1]) * 16 + hex_to_dec(from[2]);
+            from += 2;
+        } else {
+            *to = *from;
+        }
+    }
+    *to = '\0';
+}
+
+int hex_to_dec(char c) {
+    if (c >= '0' && c <= '9') {
+        return c - '0';
+    }
+    if (c >= 'a' && c <= 'f') {
+        return c - 'a' + 10;
+    }
+    if (c >= 'A' && c <= 'F') {
+        return c - 'A' + 10;
+    }
 
     return 0;
 }

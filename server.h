@@ -17,3 +17,7 @@ int send_head_msg(int cfd, int status, const char* desc, const char* type, int l
 const char* get_content_type(const char* file_name);
 
 int send_dir(const char* dir_name, int cfd);
+
+void decode_msg(char* to, char* from);
+
+int hex_to_dec(char c);
