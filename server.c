@@ -186,9 +186,11 @@ int send_file(const char* file_name, int cfd) {
     lseek(fd, 0, SEEK_SET);
     off_t offset = 0;
     while (offset < size) {
-        int ret = sendfile(cfd, fd, &offset, size);
+        int ret = sendfile(cfd, fd, &offset, size - offset);
         printf("ret value: %d\n", ret);
-        if (ret == -1) {
+        if (ret == - 1 && errno == EAGAIN) {
+            printf("no data...\n");
+        } else if (ret == -1) {
             perror("sendfile");
         }
     }
