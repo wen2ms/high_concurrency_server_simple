@@ -269,7 +269,7 @@ int send_dir(const char* dir_name, int cfd) {
         }
         
         send(cfd, buff, strlen(buff), 0);
-        memset(buff, 0, strlen(buff));
+        memset(buff, 0, sizeof(buff));
         free(namelist[i]);
     }
 
