@@ -14,6 +14,13 @@
 #include <sys/sendfile.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <pthread.h>
+
+struct FdInfo {
+    int fd;
+    int epfd;
+    pthread_t tid;
+};
 
 int init_listen_fd(unsigned short port) {
     int lfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -70,10 +77,15 @@ int epoll_run(int lfd) {
         int num = epoll_wait(epfd, events, size, -1);
         for (int i = 0; i < num; ++i) {
             int fd = events[i].data.fd;
+            struct FdInfo* info = (struct FdInfo*)malloc(sizeof(struct FdInfo));
+            info->fd = fd;
+            info->epfd = epfd;
             if (fd == lfd) {
-                accept_client(lfd, epfd);
+                // accept_client(lfd, epfd);
+                pthread_create(&info->tid, NULL, accept_client, info);
             } else {
-                recv_http_request(fd, epfd);
+                // recv_http_request(fd, epfd);
+                pthread_create(&info->tid, NULL, recv_http_request, info);
             }
         }
     }
@@ -81,11 +93,14 @@ int epoll_run(int lfd) {
     return 0;
 }
 
-int accept_client(int lfd, int epfd) {
-    int cfd = accept(lfd, NULL, NULL);
+// int accept_client(int lfd, int epfd)
+void* accept_client(void* arg) {
+    struct FdInfo* info = (struct FdInfo*)arg;
+
+    int cfd = accept(info->fd, NULL, NULL);
     if (cfd == -1) {
         perror("accept");
-        return -1;
+        return NULL;
     }
 
     int flag = fcntl(cfd, F_GETFL);
@@ -95,21 +110,25 @@ int accept_client(int lfd, int epfd) {
     struct epoll_event event;
     event.data.fd = cfd;
     event.events = EPOLLIN | EPOLLET;
-    int ret = epoll_ctl(epfd, EPOLL_CTL_ADD, cfd, &event);
+    int ret = epoll_ctl(info->epfd, EPOLL_CTL_ADD, cfd, &event);
     if (ret == -1) {
         perror("epoll_ctl");
-        return -1;
+        return NULL;
     }
 
-    return 0;
+    printf("accpet_client thread id: %ld\n", info->tid);
+    free(info);
+    return NULL;
 }
 
-int recv_http_request(int cfd, int epfd) {
+// int recv_http_request(int cfd, int epfd)
+void* recv_http_request(void* arg) {
+    struct FdInfo* info = (struct FdInfo*)arg;
     printf("Recv http request...\n");
     int len = 0, total = 0;
     char tmp[1024] = {0};
     char buf[4096] = {0};
-    while ((len = recv(cfd, tmp, sizeof(tmp), 0)) > 0) {
+    while ((len = recv(info->fd, tmp, sizeof(tmp), 0)) > 0) {
         if (total + len < sizeof(buf)) {
             memcpy(buf + total, tmp, len);
         }
@@ -120,15 +139,17 @@ int recv_http_request(int cfd, int epfd) {
         char* req_end = strstr(buf, "\r\n");
         int req_len = req_end - buf;
         buf[req_len] = '\0';
-        parse_request_line(buf, cfd);
+        parse_request_line(buf, info->fd);
     } else if (len == 0) {
-        epoll_ctl(epfd, EPOLL_CTL_DEL, cfd, NULL);
-        close(cfd);
+        epoll_ctl(info->epfd, EPOLL_CTL_DEL, info->fd, NULL);
+        close(info->fd);
     } else {
         perror("recv");
     }
 
-    return 0;
+    printf("recv_http_request thread id: %ld\n", info->tid);
+    free(info);
+    return NULL;
 }
 
 int parse_request_line(const char* line, int cfd) {

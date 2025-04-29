@@ -4,9 +4,11 @@ int init_listen_fd(unsigned short port);
 
 int epoll_run(int lfd);
 
-int accept_client(int lfd, int epfd);
+// int accept_client(int lfd, int epfd);
+void* accept_client(void* arg);
 
-int recv_http_request(int cfd, int epfd);
+// int recv_http_request(int cfd, int epfd);
+void* recv_http_request(void* arg);
 
 int parse_request_line(const char* line, int cfd);
 
